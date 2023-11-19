@@ -1,0 +1,49 @@
+import os
+import datetime
+
+from flask import Flask, render_template, request, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
+db = SQLAlchemy(app)
+
+class Mensagem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario = db.Column(db.String(255))
+    mensagem = db.Column(db.String(255))
+    data = db.Column(db.DateTime)
+    foto = db.Column(db.String(255))
+
+def enviar_mensagem():
+    usuario = request.form['usuario']
+    mensagem = request.form['mensagem']
+
+    if mensagem == "":
+        return redirect(url_for('index'))
+
+    if request.files['foto']:
+        foto = request.files['foto']
+        nome_arquivo = datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '-' + foto.filename
+        foto.save(os.path.join('static', nome_arquivo))
+        mensagem += ' (com foto)'
+
+    mensagem = Mensagem(usuario=usuario, mensagem=mensagem, data=datetime.datetime.now(), foto=nome_arquivo)
+    db.session.add(mensagem)
+    db.session.commit()
+
+    return redirect(url_for('index'))
+
+@app.route('/')
+def index():
+    mensagens = Mensagem.query.all()
+    return render_template('index.html', mensagens=mensagens)
+
+@app.route('/enviar-mensagem', methods=['POST'])
+def enviar_mensagem_post():
+    enviar_mensagem()
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
+￼Enter
